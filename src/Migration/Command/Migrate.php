@@ -11,6 +11,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Yaml\Parser;
+use Zend\Code\Reflection\FileReflection;
 
 class Migrate extends Command
 {
@@ -60,38 +61,42 @@ class Migrate extends Command
             }
             
             foreach ($directoryIterator as $classFile) {
-                require_once $classFile->getPathname();
+                $fileName = $classFile->getPathname();
+                require_once $fileName;
 
-                $className = $classFile->getBasename('php');
-
-                $migration = new $className();
+                $reflection = new FileReflection($classFile->getPathname());
+                
+                $migration = $reflection->getClass()->newInstance();
                 
                 $executed = (bool) $connection->createQueryBuilder()
                     ->select(array('count(1)'))
                     ->where('name = :name')
-                    ->setParameter('name', $className)
+                    ->setParameter('name', $fileName)
                     ->setMaxResults(1)
                     ->execute()
                     ->fetchColumn();
                 
                 if (!$executed) {
+                    $output->writeln("<info>executing migration $fileName</info>");
                     try {
                         $connection->exec($migration->getUpSql());
+                        $output->writeln("<info>$fileName executed succesfuly!</info>");
                     } catch (Exception $exception) {
                         $connection->createQueryBuilder()
                             ->insert($versionTable)
                             ->values(array(
-                                'name' => $className,
+                                'name' => $fileName,
                                 'status' => 2,
                                 'error' => $exception->getMessage(),
                             ));
+                        $output->writeln("<error>executing migration $fileName</error>");
                         continue;
                     }
                     
                     $connection->createQueryBuilder()
                         ->insert($versionTable)
                         ->values(array(
-                            'name' => $className,
+                            'name' => $fileName,
                             'status' => 1,
                         ));
                 }

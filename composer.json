@@ -1,9 +1,10 @@
 {
     "require": {
-        "symfony/console": "v2.6.*",
-        "doctrine/dbal": "v2.5.*",
-        "symfony/config": "v2.6.*",
-        "symfony/yaml": "v2.6.*"
+        "symfony/console": "2.6.*",
+        "doctrine/dbal": "2.5.*",
+        "symfony/config": "2.6.*",
+        "symfony/yaml": "2.6.*",
+        "zendframework/zend-code": "2.5.1"
     },
     "bin": ["bin/migrations"]
 }
