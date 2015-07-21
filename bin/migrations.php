@@ -1,3 +1,4 @@
+#!/usr/bin/env php
 <?php
 
 /* @var $loader Composer\Autoload\ClassLoader */
