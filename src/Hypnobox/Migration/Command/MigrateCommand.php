@@ -1,6 +1,6 @@
 <?php
 
-namespace Migration\Command;
+namespace Hypnobox\Migration\Command;
 
 use DirectoryIterator;
 use Doctrine\DBAL\Configuration;
@@ -13,7 +13,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Yaml\Parser;
 use Zend\Code\Reflection\FileReflection;
 
-class Migrate extends Command
+class MigrateCommand extends Command
 {
 
     protected function configure()
@@ -90,6 +90,7 @@ class Migrate extends Command
                                 'error' => $exception->getMessage(),
                             ));
                         $output->writeln("<error>executing migration $fileName</error>");
+                        $output->writeln("<error>{$exception->getMessage()}</error>");
                         continue;
                     }
                     
