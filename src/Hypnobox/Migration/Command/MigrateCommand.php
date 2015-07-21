@@ -6,8 +6,11 @@ use DirectoryIterator;
 use Doctrine\DBAL\Configuration;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Schema\SchemaDiff;
 use Exception;
+use RegexIterator;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Yaml\Parser;
@@ -18,7 +21,9 @@ class MigrateCommand extends Command
 
     protected function configure()
     {
-        $this->setName('migrations:migrate');
+        $this->setName('migrations:migrate')
+            ->setDescription('run the migrations based on the configs');
+        $this->addOption('--config', '-c', InputArgument::OPTIONAL, 'config file path', 'migrations/config.yml');
     }
 
     /**
@@ -30,16 +35,21 @@ class MigrateCommand extends Command
 
         foreach ($configs['databases'] as $databaseConfig) {
             $config        = new Configuration();
-            $connections[] = DriverManager::getConnection($config, $databaseConfig);
+            
+            $connection = DriverManager::getConnection($databaseConfig, $config);
+            $connection->getDatabasePlatform()->registerDoctrineTypeMapping('enum', 'string');
+            $connections[] = $connection;
         }
+        
+        return $connections;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $ymlParser = new Parser();
-        $config    = $ymlParser->parse('migrations/config.yml');
+        $config    = $ymlParser->parse(file_get_contents($input->getOption('config')));
 
-        $directoryIterator = new DirectoryIterator($config['path']);
+        $directoryIterator = new RegexIterator(new DirectoryIterator($config['path']), '/.php$/');
 
         $versionTable = $config['version_table'];
         
@@ -53,7 +63,9 @@ class MigrateCommand extends Command
                 $table->addColumn('status', 'integer');
                 $table->addColumn('error', 'string');
                 
-                $queries = $schema->toSql($connection->getDatabasePlatform());
+                $diff = new SchemaDiff(array($table));
+                
+                $queries = $diff->toSql($connection->getDatabasePlatform());
                 
                 foreach ($queries as $query) {
                     $connection->exec($query);
@@ -61,6 +73,10 @@ class MigrateCommand extends Command
             }
             
             foreach ($directoryIterator as $classFile) {
+                if ($classFile->isDot()) {
+                    continue;
+                }
+                
                 $fileName = $classFile->getPathname();
                 require_once $fileName;
 
@@ -70,6 +86,7 @@ class MigrateCommand extends Command
                 
                 $executed = (bool) $connection->createQueryBuilder()
                     ->select(array('count(1)'))
+                    ->from($versionTable)
                     ->where('name = :name')
                     ->setParameter('name', $fileName)
                     ->setMaxResults(1)
@@ -85,10 +102,13 @@ class MigrateCommand extends Command
                         $connection->createQueryBuilder()
                             ->insert($versionTable)
                             ->values(array(
-                                'name' => $fileName,
+                                'name' => ":name",
                                 'status' => 2,
-                                'error' => $exception->getMessage(),
-                            ));
+                                'error' => ":error",
+                            ))
+                            ->setParameter('error', $exception->getMessage())
+                            ->setParameter('name', $fileName)
+                            ->execute();
                         $output->writeln("<error>executing migration $fileName</error>");
                         $output->writeln("<error>{$exception->getMessage()}</error>");
                         continue;
@@ -97,9 +117,11 @@ class MigrateCommand extends Command
                     $connection->createQueryBuilder()
                         ->insert($versionTable)
                         ->values(array(
-                            'name' => $fileName,
+                            'name' => ":name",
                             'status' => 1,
-                        ));
+                        ))
+                        ->setParameter('name', $fileName)
+                        ->execute();
                 }
             }
         }
