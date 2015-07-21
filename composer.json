@@ -9,7 +9,7 @@
         "doctrine/dbal": "2.5.*",
         "symfony/config": "2.6.*",
         "symfony/yaml": "2.6.*",
-        "zendframework/zend-code": "2.5.1"
+        "zendframework/zend-code": "2.4.0"
     },
     "bin": ["bin/migrations"]
 }
