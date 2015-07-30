@@ -2,6 +2,7 @@
 <?php
 
 use Composer\Autoload\ClassLoader;
+use Hypnobox\Migration\Command\CreateCommand;
 use Hypnobox\Migration\Command\MigrateCommand;
 use Symfony\Component\Console\Application;
 
@@ -11,4 +12,5 @@ $loader = require_once 'vendor/autoload.php';
 $app = new Application('migrations');
 
 $app->add(new MigrateCommand());
+$app->add(new CreateCommand());
 $app->run();
