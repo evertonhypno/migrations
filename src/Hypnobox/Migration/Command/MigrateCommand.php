@@ -3,50 +3,24 @@
 namespace Hypnobox\Migration\Command;
 
 use DirectoryIterator;
-use Doctrine\DBAL\Configuration;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Schema\SchemaDiff;
 use Exception;
 use RegexIterator;
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Yaml\Parser;
 use Zend\Code\Reflection\FileReflection;
 
-class MigrateCommand extends Command
+class MigrateCommand extends AbstractMigrateCommand
 {
 
     protected function configure()
     {
         $this->setName('migrations:migrate')
             ->setDescription('run the migrations based on the configs');
-        $this->addOption('--config', '-c', InputArgument::OPTIONAL, 'config file path', 'migrations/config.yml');
-    }
-
-    /**
-     * @return Connection[]
-     */
-    private function getConnections(array $configs)
-    {
-        $connections = array();
-
-        foreach ($configs['databases'] as $databaseConfig) {
-            $config        = new Configuration();
-            try {
-                $connection = DriverManager::getConnection($databaseConfig, $config);
-                $connection->getDatabasePlatform()->registerDoctrineTypeMapping('enum', 'string');
-            } catch (\Exception $exception) {
-                echo $exception->getMessage() . "\n";
-                continue;
-            }
-            
-            $connections[] = $connection;
-        }
         
-        return $connections;
+        parent::configure();
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -114,7 +88,7 @@ class MigrateCommand extends Command
                             ->setParameter('error', $exception->getMessage())
                             ->setParameter('name', $fileName)
                             ->execute();
-                        $output->writeln("<error>executing migration $fileName</error>");
+                        $output->writeln("<error>error executing migration $fileName</error>");
                         $output->writeln("<error>{$exception->getMessage()}</error>");
                         continue;
                     }

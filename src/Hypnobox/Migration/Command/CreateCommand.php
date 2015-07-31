@@ -9,6 +9,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Yaml\Parser;
 use Zend\Code\Generator\ClassGenerator;
+use Zend\Code\Generator\MethodGenerator;
 
 class CreateCommand extends Command
 {
@@ -27,9 +28,24 @@ class CreateCommand extends Command
         $name      = $input->getArgument('name');
         $classGen  = new ClassGenerator();
         
-        $content = $classGen->addMethod('getUpSql')
-            ->addMethod('getDownSql')
-            ->setName($name)
+        $content = $classGen->setName($name)
+            ->addMethod(
+                'getUpSql',
+                array(),
+                MethodGenerator::FLAG_PUBLIC,
+                'return \'\';'
+            )
+            ->addMethod(
+                'getDownSql',
+                array(),
+                MethodGenerator::FLAG_PUBLIC,
+                'return \'\';'
+            )
+            ->addMethod('preUp')
+            ->addMethod('postUp')
+            ->addMethod('preDown')
+            ->addMethod('postDown')
+            
             ->generate();
         
         file_put_contents(
