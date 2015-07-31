@@ -15,8 +15,8 @@ class CreateCommand extends Command
     protected function configure()
     {
         $this->setName('migrations:create')
-            ->addOption('--name', '-n', InputOption::VALUE_REQUIRED, 'the migration name')
-            ->addOption('--config', '-c', InputArgument::OPTIONAL, 'config file path', 'migrations/config.yml');
+            ->addArgument('name', InputArgument::REQUIRED, 'the migration name')
+            ->addOption('--config', '-c', InputOption::VALUE_OPTIONAL, 'config file path', 'migrations/config.yml');
     }
     
     protected function execute(InputInterface $input, OutputInterface $output)
@@ -24,7 +24,7 @@ class CreateCommand extends Command
         $ymlParser = new Parser();
         $config    = $ymlParser->parse(file_get_contents($input->getOption('config')));
         $path      = $config['path'];
-        $name      = $input->getOption('name');
+        $name      = $input->getArgument('name');
         $classGen  = new ClassGenerator();
         
         $content = $classGen->addMethod('getUpSql')
@@ -32,23 +32,9 @@ class CreateCommand extends Command
             ->setName($name)
             ->generate();
         
-        file_put_contents(sprintf('%s/%s_%s', $path, date_timestamp_get(date_create(), $name), $content));
-    }
-    
-    public function getTemplate()
-    {
-        return <<<TEMPLATE
-class %s {
-    public function getUpSql()
-    {
-        return "";
-    }
-
-    public function getDownSql()
-    {
-        return "";
-    }
-}
-TEMPLATE;
+        file_put_contents(
+            sprintf('%s/%s_%s.php', $path, date('YmdHis'), $name), 
+            sprintf("<?php\n%s",$content)
+        );
     }
 }
