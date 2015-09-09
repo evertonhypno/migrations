@@ -24,7 +24,10 @@ abstract class AbstractMigrateCommand extends Command
         $connections = array();
 
         foreach ($configs['databases'] as $databaseConfig) {
+            $databaseConfig['charset'] = 'utf8';
+            
             $config        = new Configuration();
+            
             try {
                 $connection = DriverManager::getConnection($databaseConfig, $config);
                 $connection->getDatabasePlatform()->registerDoctrineTypeMapping('enum', 'string');
