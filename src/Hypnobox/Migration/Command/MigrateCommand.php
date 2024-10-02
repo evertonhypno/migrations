@@ -32,8 +32,12 @@ class MigrateCommand extends AbstractMigrateCommand
 
         $versionTable = $config['version_table'];
         
-        foreach ($this->getConnections($config) as $connection) {
+        foreach ($this->getConnections($config) as $connectionName => $connection) {
+            // Log da conexão que está sendo processada
+            $output->writeln("<info>Processing connection: $connectionName</info>");
+            
             if (!$connection->getSchemaManager()->tablesExist($versionTable)) {
+                $output->writeln("<info>Creating version table for connection: $connectionName</info>");
                 $schema = $connection->getSchemaManager()->createSchema();
                 $table  = $schema->createTable($versionTable);
                 
@@ -50,7 +54,7 @@ class MigrateCommand extends AbstractMigrateCommand
                     $connection->exec($query);
                 }
             }
-            
+
             foreach ($directoryIterator as $classFile) {
                 if ($classFile->isDot()) {
                     continue;
@@ -73,11 +77,15 @@ class MigrateCommand extends AbstractMigrateCommand
                     ->fetchColumn();
                 
                 if (!$executed) {
-                    $output->writeln("<info>executing migration $fileName</info>");
+                    $output->writeln("<info>Executing migration: $fileName on connection: $connectionName</info>");
                     try {
                         $connection->exec($migration->getUpSql());
-                        $output->writeln("<info>$fileName executed succesfuly!</info>");
+                        $output->writeln("<info>$fileName executed successfully on connection: $connectionName!</info>");
                     } catch (Exception $exception) {
+                        // Log de erro detalhado
+                        $output->writeln("<error>Error executing migration: $fileName on connection: $connectionName</error>");
+                        $output->writeln("<error>Error message: {$exception->getMessage()}</error>");
+                        
                         $connection->createQueryBuilder()
                             ->insert($versionTable)
                             ->values(array(
@@ -88,8 +96,7 @@ class MigrateCommand extends AbstractMigrateCommand
                             ->setParameter('error', $exception->getMessage())
                             ->setParameter('name', $fileName)
                             ->execute();
-                        $output->writeln("<error>error executing migration $fileName</error>");
-                        $output->writeln("<error>{$exception->getMessage()}</error>");
+                        
                         continue;
                     }
                     
@@ -101,6 +108,9 @@ class MigrateCommand extends AbstractMigrateCommand
                         ))
                         ->setParameter('name', $fileName)
                         ->execute();
+                } else {
+                    // Log caso a migração já tenha sido executada
+                    $output->writeln("<info>Migration $fileName already executed on connection: $connectionName</info>");
                 }
             }
         }
